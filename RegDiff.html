@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RegDiff</title>
+<style>
+:root{--bg:#f6f6f3;--fg:#1c1c1a;--mut:#6b6b66;--card:#fff;--bd:#dcdcd5;--acc:#3b5bdb;--acc2:#7048e8;--add:#0a7a2f;--del:#c62828;--pg:#e2e2db;--sh:0 1px 2px rgba(0,0,0,.05),0 6px 20px rgba(0,0,0,.06);box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#141413;--fg:#eeeeea;--mut:#9a9a94;--card:#1f1f1d;--bd:#3a3a36;--acc:#7c93ff;--acc2:#a78bfa;--add:#5fd37f;--del:#ff7b7b;--pg:#2b2b28;--sh:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35)}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#141413;--fg:#eeeeea;--mut:#9a9a94;--card:#1f1f1d;--bd:#3a3a36;--acc:#7c93ff;--acc2:#a78bfa;--add:#5fd37f;--del:#ff7b7b;--pg:#2b2b28;--sh:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:32px 16px 48px}
+header{margin-bottom:22px}
+h1{font-size:28px;letter-spacing:-.02em;margin:0 0 6px;display:flex;align-items:center;gap:10px}
+h1 i{font-style:normal;background:linear-gradient(135deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:var(--mut);margin:0;max-width:62ch}
+.sub .a{font-weight:600}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:560px){.row{grid-template-columns:1fr}}
+.drop{display:flex;align-items:center;gap:14px;border:1.5px dashed var(--bd);background:var(--card);border-radius:14px;padding:16px 18px;cursor:pointer;box-shadow:var(--sh);transition:border-color .15s,transform .15s,background .15s}
+.drop:hover,.drop.over{border-color:var(--acc);transform:translateY(-1px)}
+.drop.on{border-style:solid;border-color:color-mix(in srgb,var(--acc) 55%,var(--bd))}
+.drop .ic{flex:none;width:42px;height:42px;border-radius:11px;display:grid;place-items:center;background:color-mix(in srgb,var(--acc) 12%,transparent);color:var(--acc)}
+.drop.on .ic{background:var(--acc);color:#fff}
+.drop b{display:block;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut)}
+.drop .fn{display:block;font-weight:500;word-break:break-word}
+input[type=file]{display:none}
+#status{display:flex;align-items:center;gap:10px;min-height:24px;margin:16px 2px 0;color:var(--mut);font-size:14px}
+.spin{width:14px;height:14px;border:2px solid var(--bd);border-top-color:var(--acc);border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+#err{color:var(--del)}
+#out{margin-top:8px}
+#meta{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+#chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{font-size:13px;font-weight:600;padding:3px 11px;border-radius:999px;border:1px solid var(--bd);background:var(--card)}
+[hidden]{display:none!important}
+.chip.a{color:var(--add)}.chip.d{color:var(--del);text-decoration:none}.chip.n{color:var(--mut);font-weight:500}
+#nav{display:flex;align-items:center;gap:6px;color:var(--mut);font-size:14px}
+#nav button{width:30px;height:30px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--fg);font-size:15px;cursor:pointer}
+#nav button:hover{border-color:var(--acc)}
+#cnt{min-width:5.5em;text-align:center}
+#pnote{margin-bottom:10px;color:var(--mut);font-size:14px}
+#stage{display:flex;gap:14px;align-items:flex-start}
+#prev{flex:1;min-width:0;border:1px solid var(--bd);border-radius:14px;max-height:76vh;overflow:auto;background:var(--card);box-shadow:var(--sh);transition:opacity .2s}
+#out.loading #prev{opacity:.45}
+#ptext{padding:8px 20px}#ptext p{margin:.7em 0;white-space:pre-wrap}
+#ppage{background:var(--pg);overflow-x:auto}
+#ppage .docx-wrapper{background:transparent!important;padding:18px 10px!important}
+#ppage .docx-wrapper>section.docx{background:#fff;color:#000;box-shadow:0 2px 10px rgba(0,0,0,.22)!important}
+.cur{outline:2px solid var(--acc);outline-offset:1px;border-radius:2px}
+.a{color:var(--add);font-weight:500}.d{color:var(--del);text-decoration:line-through}
+#dock{position:sticky;top:16px;display:flex;flex-direction:column;align-items:center;gap:6px}
+.dl{position:relative;width:54px;height:54px;border-radius:50%;border:0;cursor:pointer;color:#fff;display:grid;place-items:center;background:linear-gradient(135deg,var(--acc),var(--acc2));box-shadow:0 6px 16px rgba(59,91,219,.35);transition:transform .15s,box-shadow .15s,background .3s}
+.dl:hover{transform:translateY(-2px);box-shadow:0 10px 22px rgba(59,91,219,.42)}
+.dl:active{transform:scale(.92)}
+.dl svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;grid-area:1/1;transition:opacity .2s,transform .25s}
+.dl .arrow{transform-box:fill-box}
+.dl.pulse::after{content:"";position:absolute;inset:0;border-radius:50%;border:2px solid var(--acc);animation:ring .6s ease-out}
+.dl.pulse .arrow{animation:drop .6s ease-in-out}
+.dl .ck{opacity:0;transform:scale(.4)}
+.dl.done{background:linear-gradient(135deg,#1f9d55,#2fbf71);box-shadow:0 6px 16px rgba(31,157,85,.38)}
+.dl.done .dn{opacity:0;transform:scale(.6)}.dl.done .ck{opacity:1;transform:scale(1)}
+.tip{font-size:12px;color:var(--mut)}
+@keyframes drop{0%{transform:translateY(0);opacity:1}40%{transform:translateY(9px);opacity:0}41%{transform:translateY(-9px);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes ring{from{transform:scale(1);opacity:.7}to{transform:scale(1.7);opacity:0}}
+@media(max-width:640px){#stage{display:block}#dock{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:5}.tip{display:none}#prev{max-height:70vh}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1><i>REG</i> Diff (nombre temporal)</h1>
+<p class="sub">Sube un .docx inicial y final para crear una diff: de <span class="a d">versión inicial a </span> <span class="a"> versión final</span></p>
+</header>
+<section class="row">
+<label class="drop" id="da"><input type="file" id="fa" accept=".docx"><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></span><span><b>Original</b><span class="fn">Sube o arrastra un .docx</span></span></label>
+<label class="drop" id="db"><input type="file" id="fb" accept=".docx"><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></span><span><b>Final</b><span class="fn">Sube o arrastra un .docx</span></span></label>
+</section>
+<div id="status" aria-live="polite"><span id="stxt"></span></div>
+<div id="err" role="alert"></div>
+<div id="out" hidden>
+<div id="meta"><div id="chips"></div><div id="nav"><button id="pv" title="Previous change" aria-label="Previous change">↑</button><span id="cnt"></span><button id="nx" title="Next change" aria-label="Next change">↓</button></div></div>
+<div id="pnote" hidden></div>
+<div id="stage">
+<div id="prev"><div id="ppage"></div><div id="ptext" hidden></div></div>
+<div id="dock"><button id="save" class="dl" title="Download diff.docx" aria-label="Download diff.docx"><svg class="dn" viewBox="0 0 24 24"><g class="arrow"><path d="M12 3v12M7 10.5l5 5 5-5"/></g><path d="M5 20h14"/></svg><svg class="ck" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button><span class="tip">diff.docx</span></div>
+</div>
+</div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script>
+const W='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+const XNS='http://www.w3.org/XML/1998/namespace';
+const $=id=>document.getElementById(id);
+const TOK=/[\p{L}\p{N}_]+|\s+|[^\p{L}\p{N}_\s]/gu;
+const ORD=['rStyle','rFonts','b','bCs','i','iCs','caps','smallCaps','strike','dstrike','outline','shadow','emboss','imprint','noProof','snapToGrid','vanish','webHidden','color','spacing','w','kern','position','sz','szCs','highlight','u','effect','bdr','shd','fitText','vertAlign'];
+const els=(n,t)=>[...n.getElementsByTagNameNS(W,t)];
+const kids=(n,t)=>[...n.children].filter(c=>c.namespaceURI===W&&c.localName===t);
+const files={};let result=null;
+
+/* diff core */
+function lcs(a,b,eq=(x,y)=>x===y){
+  let s=0;while(s<a.length&&s<b.length&&eq(a[s],b[s]))s++;
+  let ea=a.length,eb=b.length;while(ea>s&&eb>s&&eq(a[ea-1],b[eb-1])){ea--;eb--}
+  const n=ea-s,m=eb-s,ops=[];
+  for(let i=0;i<s;i++)ops.push(['=',i,i]);
+  if(n*m>3e7){for(let i=0;i<n;i++)ops.push(['-',s+i]);for(let j=0;j<m;j++)ops.push(['+',null,s+j])}
+  else{
+    const w=m+1,D=new Uint32Array((n+1)*w);
+    for(let i=n-1;i>=0;i--)for(let j=m-1;j>=0;j--)
+      D[i*w+j]=eq(a[s+i],b[s+j])?D[(i+1)*w+j+1]+1:Math.max(D[(i+1)*w+j],D[i*w+j+1]);
+    let i=0,j=0;
+    while(i<n&&j<m){
+      if(eq(a[s+i],b[s+j])){ops.push(['=',s+i,s+j]);i++;j++}
+      else if(D[(i+1)*w+j]>=D[i*w+j+1]){ops.push(['-',s+i]);i++}
+      else{ops.push(['+',null,s+j]);j++}
+    }
+    while(i<n)ops.push(['-',s+i++]);
+    while(j<m)ops.push(['+',null,s+j++]);
+  }
+  for(let k=0;k<a.length-ea;k++)ops.push(['=',ea+k,eb+k]);
+  return ops;
+}
+function sim(a,b){
+  const f=x=>(x.match(TOK)||[]).filter(t=>/\S/.test(t));
+  const A=f(a),B=f(b);if(!A.length&&!B.length)return 1;
+  const m=new Map();A.forEach(x=>m.set(x,(m.get(x)||0)+1));
+  let c=0;B.forEach(x=>{if(m.get(x)>0){c++;m.set(x,m.get(x)-1)}});
+  return 2*c/(A.length+B.length);
+}
+function alignGap(dels,inss,ot,nt){
+  const D=dels.length,I=inss.length;
+  if(!D||!I||D*I>4e6)return[...dels.map(o=>({o})),...inss.map(n=>({n}))];
+  const w=I+1,M=new Float64Array((D+1)*w);
+  for(let i=D-1;i>=0;i--)for(let j=I-1;j>=0;j--){
+    const s=sim(ot[dels[i]],nt[inss[j]]);
+    M[i*w+j]=Math.max(M[(i+1)*w+j],M[i*w+j+1],s>=.4?M[(i+1)*w+j+1]+s:-1);
+  }
+  const ev=[];let i=0,j=0;
+  while(i<D&&j<I){
+    const s=sim(ot[dels[i]],nt[inss[j]]);
+    if(s>=.4&&M[i*w+j]===M[(i+1)*w+j+1]+s){ev.push({o:dels[i++],n:inss[j++]})}
+    else if(M[i*w+j]===M[(i+1)*w+j])ev.push({o:dels[i++]});
+    else ev.push({n:inss[j++]});
+  }
+  while(i<D)ev.push({o:dels[i++]});while(j<I)ev.push({n:inss[j++]});
+  return ev;
+}
+
+/* docx helpers */
+function paraTokens(p){
+  const out=[];
+  for(const r of els(p,'r')){
+    const rPr=kids(r,'rPr')[0]||null;let text='',raw=false;
+    for(const c of r.children){
+      if(c.namespaceURI!==W)continue;const n=c.localName;
+      if(n==='t')text+=c.textContent;
+      else if(n==='tab')text+='\t';
+      else if(n==='br'||n==='cr')text+='\n';
+      else if(n==='noBreakHyphen')text+='-';
+      else if(n==='drawing'||n==='pict'||n==='object')raw=true;
+    }
+    if(raw){out.push({s:'\uFFFC',rPr,raw:r});continue}
+    for(const s of text.match(TOK)||[])out.push({s,rPr});
+  }
+  return out;
+}
+const ptext=p=>paraTokens(p).map(t=>t.s).join('');
+function setProp(doc,rPr,name,val){
+  kids(rPr,name).forEach(e=>rPr.removeChild(e));
+  const e=doc.createElementNS(W,'w:'+name);if(val)e.setAttributeNS(W,'w:val',val);
+  const idx=ORD.indexOf(name);
+  rPr.insertBefore(e,[...rPr.children].find(c=>ORD.indexOf(c.localName)>idx)||null);
+}
+function colorize(doc,rPr,m){
+  ['strike','dstrike'].forEach(n=>kids(rPr,n).forEach(e=>rPr.removeChild(e)));
+  if(m==='-')setProp(doc,rPr,'strike');
+  setProp(doc,rPr,'color',m==='-'?'FF0000':'00A000');
+}
+function mkRun(doc,t,s,m){
+  if(t.raw)return m==='-'?null:doc.importNode(t.raw,true);
+  const r=doc.createElementNS(W,'w:r');
+  const rPr=t.rPr?doc.importNode(t.rPr,true):doc.createElementNS(W,'w:rPr');
+  if(m!=='=')colorize(doc,rPr,m);
+  if(rPr.children.length)r.appendChild(rPr);
+  for(const part of s.split(/(\t|\n)/)){
+    if(!part)continue;
+    if(part==='\t')r.appendChild(doc.createElementNS(W,'w:tab'));
+    else if(part==='\n')r.appendChild(doc.createElementNS(W,'w:br'));
+    else{const e=doc.createElementNS(W,'w:t');e.setAttributeNS(XNS,'xml:space','preserve');e.textContent=part;r.appendChild(e)}
+  }
+  return r;
+}
+const rser=new XMLSerializer(),rkcache=new WeakMap();
+const rkey=n=>{if(!n)return '';let v=rkcache.get(n);if(v===undefined){v=rser.serializeToString(n);rkcache.set(n,v)}return v};
+function rebuild(doc,p,segs){
+  [...p.childNodes].forEach(c=>{if(!(c.namespaceURI===W&&c.localName==='pPr'))p.removeChild(c)});
+  const merged=[];
+  for(const g of segs){
+    const l=merged[merged.length-1];
+    if(l&&!g.t.raw&&!l.t.raw&&l.m===g.m&&rkey(l.t.rPr)===rkey(g.t.rPr))l.s+=g.t.s;
+    else merged.push({t:g.t,m:g.m,s:g.t.s});
+  }
+  for(const g of merged){const r=mkRun(doc,g.t,g.s,g.m);if(r)p.appendChild(r)}
+}
+const wordCount=s=>(s.match(/[\p{L}\p{N}_]+/gu)||[]).length;
+
+function diffPara(o,n){
+  const oi=[],ni=[],segs=[];
+  const ws=t=>!/\S/.test(t.s);
+  for(let k=0;k<o.length;k++)if(!ws(o[k]))oi.push(k);
+  for(let k=0;k<n.length;k++)if(!ws(n[k]))ni.push(k);
+  const ops=lcs(oi.map(k=>o[k].s),ni.map(k=>n[k].s));
+  let x=0,y=0;
+  const region=(X,Y)=>{
+    let d=[],ins=[],t0=null,t1=null;
+    while(x<X)d.push(o[x++]);
+    while(y<Y)ins.push(n[y++]);
+    if(d.length&&ins.length&&ws(d[0])&&ws(ins[0])){segs.push({t:ins[0],m:'='});d.shift();ins.shift()}
+    if(d.length&&ins.length&&ws(d[d.length-1])&&ws(ins[ins.length-1])){t0=d.pop();t1=ins.pop()}
+    if(d.length)for(const t of d)segs.push({t,m:'-'});
+    if(t0)segs.push({t:t0,m:'='});
+    if(d.length&&ins.length){const L=segs[segs.length-1];if(L.m==='-'&&!/\s$/.test(L.t.s)&&!/^\s/.test(ins[0].s))segs.push({t:{s:' ',rPr:ins[0].rPr},m:'='})}
+    if(ins.length)for(const t of ins)segs.push({t,m:'+'});
+    if(t1)segs.push({t:t1,m:'='});
+  };
+  for(const[t,i,j]of ops){
+    if(t!=='=')continue;
+    region(oi[i],ni[j]);
+    segs.push({t:n[ni[j]],m:'='});
+    x=oi[i]+1;y=ni[j]+1;
+  }
+  region(o.length,n.length);
+  return segs;
+}
+
+/* paragraph compare */
+async function compare(){
+  const rd=async f=>{
+    let z;try{z=await JSZip.loadAsync(await f.arrayBuffer())}catch(e){throw new Error(f.name+' is not a valid .docx file')}
+    const e=z.file('word/document.xml');if(!e)throw new Error(f.name+' is not a valid .docx');
+    const x=new DOMParser().parseFromString(await e.async('string'),'application/xml');
+    if(x.getElementsByTagName('parsererror').length)throw new Error('Could not parse '+f.name);
+    return{z,x};
+  };
+  const [O,N]=await Promise.all([rd(files.a),rd(files.b)]);
+  const xn=N.x,op=els(O.x,'p'),np=els(xn,'p');
+  const ot=op.map(ptext),nt=np.map(ptext);
+  const ev=[];let dels=[],inss=[];
+  const flush=()=>{ev.push(...alignGap(dels,inss,ot,nt));dels=[];inss=[]};
+  for(const [t,i,j] of lcs(ot,nt)){
+    if(t==='=')(flush(),ev.push({o:i,n:j,same:true}));
+    else if(t==='-')dels.push(i);else inss.push(j);
+  }
+  flush();
+
+  const prev=[],st={add:0,del:0};let pending=[];
+  const emitDeleted=(o,insert)=>{
+    const c=xn.importNode(op[o],true);
+    for(const e of [c,...c.getElementsByTagName('*')])for(const a of [...e.attributes])
+      if(a.localName==='paraId'||a.localName==='textId')e.removeAttributeNode(a);
+    const toks=paraTokens(c);if(!toks.length)return;
+    rebuild(xn,c,toks.map(t=>({t,m:'-'})));
+    insert(c);st.del+=wordCount(ot[o]);prev.push([['-',ot[o]]]);
+  };
+  for(const e of ev){
+    if(e.n!==undefined){
+      const ref=np[e.n];
+      pending.forEach(o=>emitDeleted(o,c=>ref.parentNode.insertBefore(c,ref)));pending=[];
+      if(e.same){prev.push([['=',nt[e.n]]]);continue}
+      const nTok=paraTokens(ref),segs=[],pv=[];
+      segs.push(...diffPara(e.o===undefined?[]:paraTokens(op[e.o]),nTok));
+      for(const g of segs){const l=pv[pv.length-1];if(l&&l[0]===g.m)l[1]+=g.t.s;else pv.push([g.m,g.t.s])}
+      for(const[m,t]of pv){if(m==='-')st.del+=wordCount(t);else if(m==='+')st.add+=wordCount(t)}
+      if(segs.length)rebuild(xn,ref,segs);
+      prev.push(pv);
+    }else pending.push(e.o);
+  }
+  if(pending.length){
+    let cur=np[np.length-1];const body=xn.getElementsByTagNameNS(W,'body')[0];
+    pending.forEach(o=>emitDeleted(o,c=>{
+      if(cur){cur.parentNode.insertBefore(c,cur.nextSibling);cur=c}
+      else{const sp=kids(body,'sectPr')[0];body.insertBefore(c,sp||null)}
+    }));
+  }
+  let xml=new XMLSerializer().serializeToString(xn);
+  if(!xml.startsWith('<?xml'))xml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+xml;
+  N.z.file('word/document.xml',xml);
+  const blob=await N.z.generateAsync({type:'blob',compression:'DEFLATE',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+  return{blob,prev,st};
+}
+
+/* page handlers */
+const PV_URLS=['https://cdn.jsdelivr.net/npm/docx-preview@0.3.3/dist/docx-preview.min.js','https://unpkg.com/docx-preview@0.3.3/dist/docx-preview.min.js'];
+const loadScript=u=>new Promise((ok,no)=>{const e=document.createElement('script');e.src=u;e.onload=ok;e.onerror=()=>no(new Error('could not load '+new URL(u).host));document.head.appendChild(e)});
+async function ensureDocx(){
+  if(window.docx)return '';
+  let err='the library did not load';
+  for(const u of PV_URLS){try{await loadScript(u);if(window.docx)return ''}catch(e){err=e.message}}
+  return err+' (internet access is needed)';
+}
+let marks=[],mi=-1,hasPage=false,runId=0,chain=Promise.resolve();
+function buildText(){
+  const box=$('ptext');box.textContent='';
+  for(const segs of result.prev){
+    const p=document.createElement('p');
+    for(const [m,t] of segs){const s=document.createElement('span');s.textContent=t;if(m==='+')s.className='a';if(m==='-')s.className='d';p.appendChild(s)}
+    if(!p.textContent)p.textContent='\u00a0';box.appendChild(p);
+  }
+}
+async function renderPreview(){
+  buildText();marks=[];mi=-1;hasPage=false;$('cnt').textContent='';
+  const pg=$('ppage');pg.textContent='';$('pnote').hidden=true;
+  let why=await ensureDocx();
+  if(!why){
+    try{
+      await docx.renderAsync(result.blob,pg,null,{inWrapper:true,breakPages:true,renderHeaders:true,renderFooters:true,useBase64URL:true});
+      hasPage=true;
+    }catch(e){console.warn('Page preview failed',e);pg.textContent='';why='rendering failed ('+(e&&e.message||e)+')'}
+  }
+  if(why){$('pnote').textContent='Page preview unavailable: '+why+'. Showing the text preview instead (the saved file is not affected).';$('pnote').hidden=false}
+  $('ppage').hidden=!hasPage;$('ptext').hidden=hasPage;$('nav').hidden=!hasPage;
+  $('prev').scrollTop=0;
+  if(hasPage){
+    let last=null;
+    for(const s of pg.querySelectorAll('span')){
+      const c=getComputedStyle(s).color;
+      if(!s.textContent.trim()||(c!=='rgb(255, 0, 0)'&&c!=='rgb(0, 160, 0)'))continue;
+      const p1=s.previousElementSibling;
+      if(last&&p1&&(p1===last||p1.previousElementSibling===last))last=s;else{marks.push(s);last=s}
+    }
+    $('cnt').textContent=marks.length?marks.length+' changes':'No changes';
+  }
+}
+function jump(d){
+  if(!marks.length)return;
+  mi=mi<0?(d>0?0:marks.length-1):(mi+d+marks.length)%marks.length;
+  marks.forEach(m=>m.classList.remove('cur'));
+  marks[mi].classList.add('cur');marks[mi].scrollIntoView({block:'center',behavior:'smooth'});
+  $('cnt').textContent=(mi+1)+' / '+marks.length;
+}
+function chips(){
+  const {add,del}=result.st,c=$('chips');c.textContent='';
+  const mk=(cls,t)=>{const e=document.createElement('span');e.className='chip '+cls;e.textContent=t;c.appendChild(e)};
+  if(!add&&!del)mk('n','No differences in text');
+  else{mk('a','+'+add+' added');mk('d','−'+del+' removed')}
+}
+function status(t){
+  $('status').querySelector('.spin')?.remove();
+  $('stxt').textContent=t||'';
+  if(t){const s=document.createElement('span');s.className='spin';$('status').prepend(s)}
+}
+async function run(my){
+  if(my!==runId)return;
+  $('err').textContent='';status('Comparing…');$('out').classList.add('loading');
+  try{
+    const r=await compare();
+    if(my!==runId)return;
+    result=r;$('out').hidden=false;chips();
+    await renderPreview();
+  }catch(e){
+    if(my!==runId)return;
+    result=null;$('out').hidden=true;$('err').textContent='Error: '+e.message;
+  }
+  if(my===runId){status('');$('out').classList.remove('loading')}
+}
+const schedule=()=>{const my=++runId;chain=chain.then(()=>run(my)).catch(()=>{})};
+function pick(k,f){
+  if(!f)return;files[k]=f;
+  const d=$(k==='a'?'da':'db');d.classList.add('on');d.querySelector('.fn').textContent=f.name;
+  if(files.a&&files.b)schedule();
+}
+['a','b'].forEach(k=>{
+  const inp=$('f'+k),d=$(k==='a'?'da':'db');
+  inp.onchange=()=>{pick(k,inp.files[0]);inp.value=''};
+  d.ondragover=e=>{e.preventDefault();d.classList.add('over')};
+  d.ondragleave=()=>d.classList.remove('over');
+  d.ondrop=e=>{e.preventDefault();d.classList.remove('over');pick(k,e.dataTransfer.files[0])};
+});
+$('pv').onclick=()=>jump(-1);$('nx').onclick=()=>jump(1);
+$('save').onclick=()=>{
+  if(!result)return;
+  const b=$('save');b.classList.remove('pulse','done');void b.offsetWidth;b.classList.add('pulse');
+  const base=files.b.name.replace(/\.docx$/i,'');
+  const a=document.createElement('a');a.href=URL.createObjectURL(result.blob);a.download='diff - '+base+'.docx';
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+  setTimeout(()=>{b.classList.add('done')},350);
+  setTimeout(()=>b.classList.remove('pulse','done'),1900);
+};
+</script>
+</body>
+</html>
