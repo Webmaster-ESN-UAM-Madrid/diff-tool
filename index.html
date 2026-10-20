@@ -90,6 +90,17 @@ input[type=file]{display:none}
 </div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script type="module">
+/* PostHog is used for analytics, surveys and to improve our tool. If you are UAM's Webmaster, you can access the account from the 'Cuentas' Sheets */
+import posthog from 'https://cdn.jsdelivr.net/npm/posthog-js@1/+esm';
+posthog.init('phc_DgUxS9DKTPfayQJ3Cyh8AqFLqKeEXSmZ2Zz7dLpmF8ro',{
+  api_host:'https://eu.i.posthog.com',
+  autocapture:false,               // only our explicit events
+  capture_pageview:true,
+  capture_exceptions:true
+});
+window.posthog=posthog;
+</script>
 <script>
 const W='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 const XNS='http://www.w3.org/XML/1998/namespace';
@@ -99,6 +110,7 @@ const ORD=['rStyle','rFonts','b','bCs','i','iCs','caps','smallCaps','strike','ds
 const els=(n,t)=>[...n.getElementsByTagNameNS(W,t)];
 const kids=(n,t)=>[...n.children].filter(c=>c.namespaceURI===W&&c.localName===t);
 const files={};let result=null;
+const track=(ev,props)=>{try{window.posthog&&posthog.capture(ev,props)}catch(e){}};
 
 /* diff core */
 function lcs(a,b,eq=(x,y)=>x===y){
@@ -320,6 +332,7 @@ async function renderPreview(){
       hasPage=true;
     }catch(e){console.warn('Page preview failed',e);pg.textContent='';why='rendering failed ('+(e&&e.message||e)+')'}
   }
+  if(why)track('preview_fallback',{reason:why});
   if(why){$('pnote').textContent='Page preview unavailable: '+why+'. Showing the text preview instead (the saved file is not affected).';$('pnote').hidden=false}
   $('ppage').hidden=!hasPage;$('ptext').hidden=hasPage;$('nav').hidden=!hasPage;
   $('prev').scrollTop=0;
@@ -334,8 +347,10 @@ async function renderPreview(){
     $('cnt').textContent=marks.length?marks.length+' changes':'No changes';
   }
 }
+
 function jump(d){
   if(!marks.length)return;
+  track('change_nav',{direction:d>0?'next':'prev'});
   mi=mi<0?(d>0?0:marks.length-1):(mi+d+marks.length)%marks.length;
   marks.forEach(m=>m.classList.remove('cur'));
   marks[mi].classList.add('cur');marks[mi].scrollIntoView({block:'center',behavior:'smooth'});
@@ -355,20 +370,32 @@ function status(t){
 async function run(my){
   if(my!==runId)return;
   $('err').textContent='';status('Comparing…');$('out').classList.add('loading');
+  const t0=performance.now();
   try{
     const r=await compare();
     if(my!==runId)return;
+    const tCompare=Math.round(performance.now()-t0);
     result=r;$('out').hidden=false;chips();
     await renderPreview();
+    track('comparison_completed',{
+      original:files.a.name,final:files.b.name,
+      original_kb:Math.round(files.a.size/1024),final_kb:Math.round(files.b.size/1024),
+      paragraphs:r.prev.length,added_words:r.st.add,removed_words:r.st.del,
+      changes:marks.length,compare_ms:tCompare,total_ms:Math.round(performance.now()-t0),
+      preview:hasPage?'page':'text'
+    });
   }catch(e){
     if(my!==runId)return;
     result=null;$('out').hidden=true;$('err').textContent='Error: '+e.message;
+    track('comparison_failed',{message:e.message,original:files.a&&files.a.name,final:files.b&&files.b.name});
+    try{window.posthog&&posthog.captureException(e)}catch(_){}
   }
   if(my===runId){status('');$('out').classList.remove('loading')}
 }
 const schedule=()=>{const my=++runId;chain=chain.then(()=>run(my)).catch(()=>{})};
 function pick(k,f){
   if(!f)return;files[k]=f;
+  track('file_loaded',{slot:k,name:f.name,size_kb:Math.round(f.size/1024)});
   const d=$(k==='a'?'da':'db');d.classList.add('on');d.querySelector('.fn').textContent=f.name;
   if(files.a&&files.b)schedule();
 }
@@ -382,6 +409,7 @@ function pick(k,f){
 $('pv').onclick=()=>jump(-1);$('nx').onclick=()=>jump(1);
 $('save').onclick=()=>{
   if(!result)return;
+  track('diff_downloaded',{final:files.b.name,added_words:result.st.add,removed_words:result.st.del});
   const b=$('save');b.classList.remove('pulse','done');void b.offsetWidth;b.classList.add('pulse');
   const base=files.b.name.replace(/\.docx$/i,'');
   const a=document.createElement('a');a.href=URL.createObjectURL(result.blob);a.download='diff - '+base+'.docx';
