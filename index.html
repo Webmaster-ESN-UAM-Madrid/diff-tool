@@ -20,6 +20,7 @@ h1 i{font-style:normal;background:linear-gradient(135deg,var(--acc),var(--acc2))
 @media(max-width:560px){.row{grid-template-columns:1fr}}
 .drop{display:flex;align-items:center;gap:14px;border:1.5px dashed var(--bd);background:var(--card);border-radius:14px;padding:16px 18px;cursor:pointer;box-shadow:var(--sh);transition:border-color .15s,transform .15s,background .15s}
 .drop:hover,.drop.over{border-color:var(--acc);transform:translateY(-1px)}
+.drop:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 .drop.on{border-style:solid;border-color:color-mix(in srgb,var(--acc) 55%,var(--bd))}
 .drop .ic{flex:none;width:42px;height:42px;border-radius:11px;display:grid;place-items:center;background:color-mix(in srgb,var(--acc) 12%,transparent);color:var(--acc)}
 .drop.on .ic{background:var(--acc);color:#fff}
@@ -75,8 +76,8 @@ input[type=file]{display:none}
 <p class="sub">Sube un .docx inicial y final para crear una diff: de <span class="a d">versión inicial a </span> <span class="a"> versión final</span></p>
 </header>
 <section class="row">
-<label class="drop" id="da"><input type="file" id="fa" accept=".docx"><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></span><span><b>Original</b><span class="fn">Sube o arrastra un .docx</span></span></label>
-<label class="drop" id="db"><input type="file" id="fb" accept=".docx"><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></span><span><b>Final</b><span class="fn">Sube o arrastra un .docx</span></span></label>
+<div class="drop" id="da" role="button" tabindex="0"><input type="file" id="fa" accept=".docx"><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></span><span><b>Original</b><span class="fn">Sube o arrastra un .docx</span></span></div>
+<div class="drop" id="db" role="button" tabindex="0"><input type="file" id="fb" accept=".docx"><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></span><span><b>Final</b><span class="fn">Sube o arrastra un .docx</span></span></div>
 </section>
 <div id="status" aria-live="polite"><span id="stxt"></span></div>
 <div id="err" role="alert"></div>
@@ -85,22 +86,11 @@ input[type=file]{display:none}
 <div id="pnote" hidden></div>
 <div id="stage">
 <div id="prev"><div id="ppage"></div><div id="ptext" hidden></div></div>
-<div id="dock"><button id="save" class="dl" title="Download diff.docx" aria-label="Download diff.docx"><svg class="dn" viewBox="0 0 24 24"><g class="arrow"><path d="M12 3v12M7 10.5l5 5 5-5"/></g><path d="M5 20h14"/></svg><svg class="ck" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button><span class="tip">diff.docx</span><button id="fbk" class="dl" type="button" title="Enviar comentarios" aria-label="Enviar comentarios"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M8.5 11h7M8.5 14h4"/></svg></button><span class="tip">feedback</span></div>
+<div id="dock"><button id="save" class="dl" title="Download diff.docx" aria-label="Download diff.docx"><svg class="dn" viewBox="0 0 24 24"><g class="arrow"><path d="M12 3v12M7 10.5l5 5 5-5"/></g><path d="M5 20h14"/></svg><svg class="ck" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button><span class="tip">diff.docx</span><button id="fbk" class="dl" type="button" hidden title="Enviar comentarios" aria-label="Enviar comentarios"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M8.5 11h7M8.5 14h4"/></svg></button><span class="tip" id="fbtip" hidden>feedback</span></div>
 </div>
 </div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-<script type="module">
-/* PostHog is used for analytics, surveys and to improve our tool. If you are UAM's Webmaster, you can access the account from the 'Cuentas' Sheets */
-import posthog from 'https://cdn.jsdelivr.net/npm/posthog-js@1/+esm';
-posthog.init('phc_DgUxS9DKTPfayQJ3Cyh8AqFLqKeEXSmZ2Zz7dLpmF8ro',{
-  api_host:'https://eu.i.posthog.com',
-  autocapture:false,               // only our explicit events
-  capture_pageview:true,
-  capture_exceptions:true
-});
-window.posthog=posthog;
-</script>
 <script>
 const W='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 const XNS='http://www.w3.org/XML/1998/namespace';
@@ -402,6 +392,8 @@ function pick(k,f){
 ['a','b'].forEach(k=>{
   const inp=$('f'+k),d=$(k==='a'?'da':'db');
   inp.onchange=()=>{pick(k,inp.files[0]);inp.value=''};
+  d.onclick=e=>{if(e.target!==inp)inp.click()};
+  d.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();inp.click()}};
   d.ondragover=e=>{e.preventDefault();d.classList.add('over')};
   d.ondragleave=()=>d.classList.remove('over');
   d.ondrop=e=>{e.preventDefault();d.classList.remove('over');pick(k,e.dataTransfer.files[0])};
@@ -409,6 +401,7 @@ function pick(k,f){
 /* Feedback */
 const SURVEY_ID='01a158a3-9fb2-0000-7e56-f3fa8752de51';
 $('fbk').onclick=()=>{
+  if(!window.posthog)return;
   track('feedback_opened');
   try{
     posthog.displaySurvey(SURVEY_ID,{displayType:'popover',ignoreConditions:true,ignoreDelay:true});
@@ -428,6 +421,22 @@ $('save').onclick=()=>{
   setTimeout(()=>{b.classList.add('done')},350);
   setTimeout(()=>b.classList.remove('pulse','done'),1900);
 };
+
+
+/* PostHog is used for analytics, surveys and to improve our tool. If you are UAM's Webmaster, you can access the account from the 'Cuentas' Sheets */
+window.addEventListener('load',()=>{
+  import('https://cdn.jsdelivr.net/npm/posthog-js@1/+esm').then(m=>{
+    const ph=m.default;
+    ph.init('phc_DgUxS9DKTPfayQJ3Cyh8AqFLqKeEXSmZ2Zz7dLpmF8ro',{
+      api_host:'https://eu.i.posthog.com',
+      autocapture:false,               // only our explicit events
+      capture_pageview:true,
+      capture_exceptions:true
+    });
+    window.posthog=ph;
+    $('fbk').hidden=false;$('fbtip').hidden=false;
+  }).catch(e=>console.warn('Analytics unavailable:',e));
+});
 </script>
 </body>
 </html>
